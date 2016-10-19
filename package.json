@@ -1,0 +1,29 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "description": "A bot that bans spammy users from a group for a number of minutes.",
+  "main": "bot.js",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.24.0",
+    "nodemon": "^1.11.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattogodoy/telegram-kickbot.git"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "node"
+  ],
+  "author": "Matias Godoy",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mattogodoy/telegram-kickbot/issues"
+  },
+  "homepage": "https://github.com/mattogodoy/telegram-kickbot#readme"
+}

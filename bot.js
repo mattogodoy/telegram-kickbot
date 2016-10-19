@@ -26,6 +26,7 @@ var boldAnswers = [
 var bannedUsers = [];
 var banTimeInMinutes = 1;
 var strikesResetTimeInMinutes = 1;
+var maxStrikes = 3;
 var chatLinks = {};
 var messageOptions = {'parse_mode': 'Markdown'};
 
@@ -71,6 +72,9 @@ function init(){
 
   console.log(asciiRobot);
   console.log('\n            Hi! my name is @%s!\n\n', that.me.username);
+
+  // We add a strike because the first one doesn't count
+  maxStrikes++;
 
   getLinks();
 }
@@ -120,20 +124,22 @@ bot.on('message', function (msg){
       console.log('The bot was mentioned');
     }
   }
-  
-  // A user joined the group
-  if(msg.new_chat_member){
-    console.log('A user joined the group ' + chatId + ': ' + msg.new_chat_member.username);
+});
 
-    // Check if the new user is banned
-    if(bannedUsers.length){
-      bannedUsers.forEach(function(user, index){
-        if(msg.new_chat_member.id == user.userId){
-          // Ban the user again, but keep original ban start time
-          banUser({'id': user.userId, 'username': user.username}, {'id': user.chatId, 'title': user.chatName}, user.lastStrike, true);
-        }
-      });
-    }
+// A new user joined the group
+bot.on('new_chat_participant', function (msg){
+  var chatId = msg.chat.id;
+
+  console.log('A user joined the group ' + chatId + ': ' + msg.new_chat_member.username);
+
+  // Check if the new user is banned
+  if(bannedUsers.length){
+    bannedUsers.forEach(function(user, index){
+      if(msg.new_chat_member.id == user.userId){
+        // Ban the user again, but keep original ban start time
+        banUser({'id': user.userId, 'username': user.username}, {'id': user.chatId, 'title': user.chatName}, user.lastStrike, true);
+      }
+    });
   }
 });
 
@@ -155,14 +161,18 @@ function addStrike(user, chat){
   userList[user.id].lastStrike = new Date();
   userList[user.id].strikes++;
 
-  console.log('Strike ' + userList[user.id].strikes + ' for ' + user.username);
+  console.log('Strike ' + (userList[user.id].strikes - 1) + ' for ' + user.username);
 
-  bot.sendMessage(chat.id, 'Strike ' + userList[user.id].strikes + ' for @' + user.username)
-    .then(function(){
-      if(userList[user.id].strikes >= 3){
-        banUser(user, chat, userList[user.id].lastStrike, false);
-      }
-    });
+  // The first strike doesn't count
+  if(userList[user.id].strikes > 1){
+    // We show strikes - 1 because the first one doesn't count
+    bot.sendMessage(chat.id, 'Strike ' + (userList[user.id].strikes - 1) + ' for @' + user.username)
+      .then(function(){
+        if(userList[user.id].strikes >= maxStrikes){
+          banUser(user, chat, userList[user.id].lastStrike, false);
+        }
+      });
+  }
 }
 
 function banUser(user, chat, lastStrike, returningEarly){
@@ -171,7 +181,7 @@ function banUser(user, chat, lastStrike, returningEarly){
   if(returningEarly){
     banMessage = 'Hey @' + user.username + '! You are not allowed here yet, buddy.\nYou are still grounded for ' + (banTimeInMinutes - minutesPassed(lastStrike)) + ' more minutes.';
   } else {
-    banMessage = '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for 10 minutes.'
+    banMessage = '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for ' + (banTimeInMinutes - minutesPassed(lastStrike)) + ' minutes.'
     if(chatLinks[chat.id] && chatLinks[chat.id].inviteLink){
       banMessage += '\nAfter that period, you can join this group again using this link: ' + chatLinks[chat.id].inviteLink;
     } else {
@@ -219,7 +229,7 @@ function unBanUser(user){
   // Send a message to the group
   bot.sendMessage(user.chatId, '@' + user.username + ' is now allowed to join this group again.');
 
-  console.log('User can noy join the group again: ' + user.username);
+  console.log('User is now allowed to join the group again: ' + user.username);
 }
 
 function minutesPassed(since){
@@ -240,11 +250,12 @@ function allowBannedUsers(){
 }
 
 function resetStrikes(){
-  if(userList.length){
-    userList.forEach(function(user, index){
-      if(minutesPassed(user.lastStrike) >= strikesResetTimeInMinutes){
-        userList[user.id].strikes = 0;
-        console.log('Strikes reset for ' + user.username);
+  if(userList){
+    // Loop through all of the users
+    Object.keys(userList).forEach(function(key) {
+      if(userList[key].strikes > 0 && minutesPassed(userList[key].lastStrike) >= strikesResetTimeInMinutes){
+        userList[key].strikes = 0;
+        console.log('Strikes reset for ' + userList[key].username);
       }
     });
   }
