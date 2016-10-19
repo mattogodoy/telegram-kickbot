@@ -24,7 +24,8 @@ var boldAnswers = [
 ];
 
 var bannedUsers = [];
-var resetTimeInMinutes = 1;
+var banTimeInMinutes = 1;
+var strikesResetTimeInMinutes = 1;
 var chatLinks = {};
 var messageOptions = {'parse_mode': 'Markdown'};
 
@@ -83,6 +84,7 @@ bot.onText(/\/setlink (.+)/, function (msg, match){
     chatLinks[chatId].inviteLink = match[1];
     saveLinks();
     bot.sendMessage(chatId, 'Invite link set for this group: ' + match[1]);
+    console.log('Invite link set for group ' + chatId + ': ' + match[1]);
   } else {
     bot.sendMessage(chatId, 'Parameter missing or incorrect. It has to be a URL.\nUsage: `/setlink https://telegram.me/joinchat/invitehash`', messageOptions);
   }
@@ -115,11 +117,14 @@ bot.on('message', function (msg){
     if(that.me && msg.text.toLowerCase().indexOf(that.me.username.toLowerCase()) !== -1){
       var response = boldAnswers[Math.floor(Math.random() * boldAnswers.length)];
       bot.sendMessage(chatId, response);
+      console.log('The bot was mentioned');
     }
   }
   
   // A user joined the group
   if(msg.new_chat_member){
+    console.log('A user joined the group ' + chatId + ': ' + msg.new_chat_member.username);
+
     // Check if the new user is banned
     if(bannedUsers.length){
       bannedUsers.forEach(function(user, index){
@@ -140,7 +145,7 @@ function containsURL(string){
 }
 
 function addStrike(user, chat){
-  if(!userList[user.id] || minutesPassed(userList[user.id].lastStrike) > resetTimeInMinutes){
+  if(!userList[user.id] || minutesPassed(userList[user.id].lastStrike) > banTimeInMinutes){
     userList[user.id] = {
       username: user.username,
       strikes: 0
@@ -149,6 +154,8 @@ function addStrike(user, chat){
 
   userList[user.id].lastStrike = new Date();
   userList[user.id].strikes++;
+
+  console.log('Strike ' + userList[user.id].strikes + ' for ' + user.username);
 
   bot.sendMessage(chat.id, 'Strike ' + userList[user.id].strikes + ' for @' + user.username)
     .then(function(){
@@ -162,7 +169,7 @@ function banUser(user, chat, lastStrike, returningEarly){
   var banMessage = '';
 
   if(returningEarly){
-    banMessage = 'Hey @' + user.username + '! You are not allowed here yet, buddy.\nYou are still grounded for ' + (resetTimeInMinutes - minutesPassed(lastStrike)) + ' more minutes.';
+    banMessage = 'Hey @' + user.username + '! You are not allowed here yet, buddy.\nYou are still grounded for ' + (banTimeInMinutes - minutesPassed(lastStrike)) + ' more minutes.';
   } else {
     banMessage = '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for 10 minutes.'
     if(chatLinks[chat.id] && chatLinks[chat.id].inviteLink){
@@ -187,11 +194,15 @@ function banUser(user, chat, lastStrike, returningEarly){
       // Don't kick me. I'M THE MASTER
       if(user.username !== 'mattog'){
         bot.kickChatMember(chat.id, user.id); // Kick the user
+        console.log('User banned: ' + user.username);
       }
     });
 }
 
 function unBanUser(user){
+  // Reset user strikes
+  userList[user.userId].strikes = 0;
+
   // This method is available for supergroup chats only
   // bot.unbanChatMember(user.chatId, user.userId); // Un-Ban user
 
@@ -207,6 +218,8 @@ function unBanUser(user){
 
   // Send a message to the group
   bot.sendMessage(user.chatId, '@' + user.username + ' is now allowed to join this group again.');
+
+  console.log('User can noy join the group again: ' + user.username);
 }
 
 function minutesPassed(since){
@@ -218,7 +231,7 @@ function minutesPassed(since){
 function allowBannedUsers(){
   if(bannedUsers.length){
     bannedUsers.forEach(function(user, index){
-      if(minutesPassed(user.lastStrike) >= resetTimeInMinutes){
+      if(minutesPassed(user.lastStrike) >= banTimeInMinutes){
         unBanUser(user);
         bannedUsers.splice(index, 1); // Remove the user from bannedUsers list
       }
@@ -226,8 +239,20 @@ function allowBannedUsers(){
   }
 }
 
+function resetStrikes(){
+  if(userList.length){
+    userList.forEach(function(user, index){
+      if(minutesPassed(user.lastStrike) >= strikesResetTimeInMinutes){
+        userList[user.id].strikes = 0;
+        console.log('Strikes reset for ' + user.username);
+      }
+    });
+  }
+}
+
 function saveLinks() {
   fs.writeFileSync('storage/chatLinks.json', JSON.stringify(chatLinks), 'utf8');
+  console.log('The invite links file has been saved');
 }
 
 function getLinks() {
@@ -237,4 +262,5 @@ function getLinks() {
 // Init timer
 setInterval(function(){
   allowBannedUsers();
+  resetStrikes();
 }, 1000);
