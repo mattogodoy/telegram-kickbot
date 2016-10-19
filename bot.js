@@ -100,7 +100,7 @@ bot.onText(/\/getlink/, function (msg, match){
   if(chatLinks && chatLinks[chatId]){
     bot.sendMessage(chatId, 'The invite link for this group is: ' + chatLinks[chatId].inviteLink);
   } else {
-    bot.sendMessage(chatId, 'No invite link found for this group. Please set one using `/setlink', messageOptions);
+    bot.sendMessage(chatId, 'No invite link found for this group. Please set one using `/setlink`', messageOptions);
   }
 });
 
