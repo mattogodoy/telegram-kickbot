@@ -205,6 +205,10 @@ function banUser(user, chat, lastStrike, returningEarly){
         bot.kickChatMember(chat.id, user.id); // Kick the user
         console.log('User banned: ' + user.username);
       }
+    })
+    .catch(function(err){
+      console.log(JSON.parse(err));
+      console.log(banMessage);
     });
 }
 
