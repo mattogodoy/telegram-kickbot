@@ -5,7 +5,6 @@ var token = '188837433:AAERzRXh8Lo7-o18TX9WZ46ImmaruvYbaSY';
 // Setup polling way
 var bot = new TelegramBot(token, {polling: true});
 var me;
-var strikes = 0;
 var that = this;
 
 var userList = {};
@@ -24,8 +23,8 @@ var boldAnswers = [
 ];
 
 var bannedUsers = [];
-var banTimeInMinutes = 1;
-var strikesResetTimeInMinutes = 1;
+var banTimeInMinutes = 10;
+var strikesResetTimeInMinutes = 60;
 var maxStrikes = 3;
 var chatLinks = {};
 var messageOptions = {'parse_mode': 'Markdown'};
@@ -34,7 +33,7 @@ var messageOptions = {'parse_mode': 'Markdown'};
 bot.getMe().then(function (me){
   // console.log('Hi! my name is @%s!', me.username);
   that.me = me;
-  
+
   init();
 });
 
