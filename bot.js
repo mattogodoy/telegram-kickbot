@@ -27,7 +27,8 @@ var banTimeInMinutes = 10;
 var strikesResetTimeInMinutes = 60;
 var maxStrikes = 3;
 var chatLinks = {};
-var messageOptions = {'parse_mode': 'Markdown'};
+// var messageOptions = {'parse_mode': 'Markdown'};
+var messageOptions = {}; // Parsing the markdown brings lots of errors
 
 
 bot.getMe().then(function (me){
@@ -89,7 +90,7 @@ bot.onText(/\/setlink (.+)/, function (msg, match){
     bot.sendMessage(chatId, 'Invite link set for this group: ' + match[1]);
     console.log('Invite link set for group ' + chatId + ': ' + match[1]);
   } else {
-    bot.sendMessage(chatId, 'Parameter missing or incorrect. It has to be a URL.\nUsage: `/setlink https://telegram.me/joinchat/invitehash`', messageOptions);
+    bot.sendMessage(chatId, 'Parameter missing or incorrect. It has to be a URL.\nUsage: /setlink https://telegram.me/joinchat/invitehash', messageOptions);
   }
 });
 
@@ -100,7 +101,7 @@ bot.onText(/\/getlink/, function (msg, match){
   if(chatLinks && chatLinks[chatId]){
     bot.sendMessage(chatId, 'The invite link for this group is: ' + chatLinks[chatId].inviteLink);
   } else {
-    bot.sendMessage(chatId, 'No invite link found for this group. Please set one using `/setlink`', messageOptions);
+    bot.sendMessage(chatId, 'No invite link found for this group. Please set one using /setlink', messageOptions);
   }
 });
 
@@ -166,7 +167,7 @@ function addStrike(user, chat){
   if(userList[user.id].strikes > 1){
     // We show strikes - 1 because the first one doesn't count
     bot.sendMessage(chat.id, 'Strike ' + (userList[user.id].strikes - 1) + ' for @' + user.username)
-      .then(function(){
+      .finally(function(){ // Continue even if I have an error sending the message
         if(userList[user.id].strikes >= maxStrikes){
           banUser(user, chat, userList[user.id].lastStrike, false);
         }
@@ -186,7 +187,7 @@ function banUser(user, chat, lastStrike, returningEarly){
     } else {
       banMessage += '\nAfter that period you can join this group again.'
     }
-    banMessage += '\nIf you want to receive a notification when you are allowed to join this group again, send me a direct message with the text `/start`. Otherwise, just come back in 10 minutes and chill about the links, ok?\nIn the meantime, think about what you\'ve done.';
+    banMessage += '\nIf you want to receive a notification when you are allowed to join this group again, send me a direct message with the text /start. Otherwise, just come back in 10 minutes and chill about the links, ok?\nIn the meantime, think about what you\'ve done.';
 
     // Add user to the banned users list
     bannedUsers.push({
@@ -199,7 +200,7 @@ function banUser(user, chat, lastStrike, returningEarly){
   }
 
   bot.sendMessage(chat.id, banMessage, messageOptions)
-    .then(function(){
+    .finally(function(){ // Continue even if I have an error sending the message
       // Don't kick me. I'M THE MASTER
       if(user.username !== 'mattog'){
         bot.kickChatMember(chat.id, user.id); // Kick the user
@@ -207,7 +208,7 @@ function banUser(user, chat, lastStrike, returningEarly){
       }
     })
     .catch(function(err){
-      console.log(JSON.parse(err));
+      console.log(err);
       console.log(banMessage);
     });
 }
