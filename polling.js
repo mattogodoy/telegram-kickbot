@@ -1,4 +1,5 @@
 var TelegramBot = require('node-telegram-bot-api');
+var fs = require('fs');
 
 var token = '188837433:AAERzRXh8Lo7-o18TX9WZ46ImmaruvYbaSY';
 // Setup polling way
@@ -24,13 +25,20 @@ var boldAnswers = [
 
 var bannedUsers = [];
 var resetTimeInMinutes = 1;
+var chatLinks = {};
+var messageOptions = {'parse_mode': 'Markdown'};
 
 
 bot.getMe().then(function (me){
   console.log('Hi! my name is %s!', me.username);
   that.me = me;
-  console.log('message: ', JSON.stringify(me));
+  
+  init();
 });
+
+function init(){
+  getLinks();
+}
 
 // Matches /echo [whatever]
 bot.onText(/\/echo (.+)/, function (msg, match){
@@ -40,12 +48,29 @@ bot.onText(/\/echo (.+)/, function (msg, match){
   bot.sendMessage(fromId, resp);
 });
 
-// Matches /echo [whatever]
-bot.onText(/\/adri (.+)/, function (msg, match){
-  console.log('echo: ', JSON.stringify(msg));
-  var fromId = msg.from.id;
-  var resp = match[1];
-  bot.sendMessage(fromId, resp);
+// Command: /setlink
+bot.onText(/\/setlink (.+)/, function (msg, match){
+  var chatId = msg.chat.id;
+
+  if(match[1] && containsURL(match[1])){
+    chatLinks[chatId] = {};
+    chatLinks[chatId].inviteLink = match[1];
+    saveLinks();
+    bot.sendMessage(chatId, 'Invite link set for this group: ' + match[1]);
+  } else {
+    bot.sendMessage(chatId, 'Parameter missing or incorrect. It has to be a URL.\nUsage: `/setlink https://telegram.me/joinchat/invitehash`', messageOptions);
+  }
+});
+
+// Command: /getlink
+bot.onText(/\/getlink/, function (msg, match){
+  var chatId = msg.chat.id;
+
+  if(chatLinks && chatLinks[chatId]){
+    bot.sendMessage(chatId, 'The invite link for this group is: ' + chatLinks[chatId].inviteLink);
+  } else {
+    bot.sendMessage(chatId, 'No invite link found for this group. Please set one using `/setlink', messageOptions);
+  }
 });
 
 // Any kind of message
@@ -55,18 +80,16 @@ bot.on('message', function (msg){
   var chatId = msg.chat.id;
 
   if(msg.text){
-    if(containsURL(msg.text)){
+    // Strike detected
+    if(msg.text.indexOf('/setlink') == -1 && containsURL(msg.text)){
       addStrike(msg.from, msg.chat);
       bot.sendMessage(chatId, 'Strike ' + userList[msg.from.id].strikes + ' for @' + msg.from.username);
     }
 
-    if(msg.text.toLowerCase().indexOf(that.me.username.toLowerCase()) !== -1){
-      console.log('---> Mention!');
+    // Mention detected
+    if(that.me && msg.text.toLowerCase().indexOf(that.me.username.toLowerCase()) !== -1){
       var response = boldAnswers[Math.floor(Math.random() * boldAnswers.length)];
       bot.sendMessage(chatId, response);
-
-      // var fromId = msg.from.id;
-      // bot.sendMessage(fromId, 'Stay away from me!'); // Respuesta directa a user
     }
   }
 });
@@ -100,8 +123,16 @@ function addStrike(user, chat){
 }
 
 function banUser(user, chat, lastStrike){
+  var banMessage = '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for 10 minutes.'
+  if(chatLinks[chat.id] && chatLinks[chat.id].inviteLink){
+    banMessage += '\nAfter that period, you can join this group again using this link: ' + chatLinks[chat.id].inviteLink;
+  } else {
+    banMessage += '\nAfter that period you can join this group again.'
+  }
 
-  bot.sendMessage(chat.id, '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for 10 minutes.\nIf you want to receive a notification when you are allowed to join this group again, send me a direct message with the text "/start". Otherwise, just come back in 10 minutes and chill about the links, ok?');
+  banMessage += '\nIf you want to receive a notification when you are allowed to join this group again, send me a direct message with the text `/start. Otherwise, just come back in 10 minutes and chill about the links, ok?\nIn the meantime, think about what you\'ve done.';
+
+  bot.sendMessage(chat.id, banMessage, messageOptions);
   bannedUsers.push({
     userId: user.id,
     username: user.username,
@@ -141,6 +172,15 @@ function allowBannedUsers(){
       }
     });
   }
+}
+
+function saveLinks() {
+  fs.writeFileSync('storage/chatLinks.json', JSON.stringify(chatLinks), 'utf8');
+}
+
+function getLinks() {
+  chatLinks = JSON.parse(fs.readFileSync('storage/chatLinks.json'));
+  console.log(JSON.stringify(chatLinks));
 }
 
 // Init timer
