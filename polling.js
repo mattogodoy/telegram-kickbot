@@ -26,14 +26,14 @@ var bannedUsers = [];
 var resetTimeInMinutes = 1;
 
 
-bot.getMe().then(function (me) {
+bot.getMe().then(function (me){
   console.log('Hi! my name is %s!', me.username);
   that.me = me;
   console.log('message: ', JSON.stringify(me));
 });
 
 // Matches /echo [whatever]
-bot.onText(/\/echo (.+)/, function (msg, match) {
+bot.onText(/\/echo (.+)/, function (msg, match){
   console.log('echo: ', JSON.stringify(msg));
   var fromId = msg.from.id;
   var resp = match[1];
@@ -41,7 +41,7 @@ bot.onText(/\/echo (.+)/, function (msg, match) {
 });
 
 // Matches /echo [whatever]
-bot.onText(/\/adri (.+)/, function (msg, match) {
+bot.onText(/\/adri (.+)/, function (msg, match){
   console.log('echo: ', JSON.stringify(msg));
   var fromId = msg.from.id;
   var resp = match[1];
@@ -49,18 +49,18 @@ bot.onText(/\/adri (.+)/, function (msg, match) {
 });
 
 // Any kind of message
-bot.on('message', function (msg) {
+bot.on('message', function (msg){
   console.log('message: ', JSON.stringify(msg));
 
   var chatId = msg.chat.id;
 
-  if (msg.text){
-    if (containsURL(msg.text)) {
+  if(msg.text){
+    if(containsURL(msg.text)){
       addStrike(msg.from, msg.chat);
       bot.sendMessage(chatId, 'Strike ' + userList[msg.from.id].strikes + ' for @' + msg.from.username);
     }
 
-    if (msg.text.toLowerCase().indexOf(that.me.username.toLowerCase()) !== -1) {
+    if(msg.text.toLowerCase().indexOf(that.me.username.toLowerCase()) !== -1){
       console.log('---> Mention!');
       var response = boldAnswers[Math.floor(Math.random() * boldAnswers.length)];
       bot.sendMessage(chatId, response);
@@ -71,7 +71,7 @@ bot.on('message', function (msg) {
   }
 });
 
-function containsURL(string) {
+function containsURL(string){
   var expression = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/gi;
   var regex = new RegExp(expression);
 
@@ -94,13 +94,12 @@ function addStrike(user, chat){
   console.log(JSON.stringify(userList));
   console.log('==========================');
 
-  if (userList[user.id].strikes >= 3) {
+  if(userList[user.id].strikes >= 3){
     banUser(user, chat, userList[user.id].lastStrike);
   }
 }
 
 function banUser(user, chat, lastStrike){
-  // if(user.username === 'mattog') return;
 
   bot.sendMessage(chat.id, '@' + user.username + ', you have reached the maximum count of allowed links and you are now banned for 10 minutes.\nIf you want to receive a notification when you are allowed to join this group again, send me a direct message with the text "/start". Otherwise, just come back in 10 minutes and chill about the links, ok?');
   bannedUsers.push({
@@ -111,7 +110,10 @@ function banUser(user, chat, lastStrike){
     lastStrike: lastStrike
   });
 
-  bot.kickChatMember(chat.id, user.id); // Kick the user
+  // Don't kick me. I'M THE MASTER
+  if(user.username !== 'mattog'){
+    bot.kickChatMember(chat.id, user.id); // Kick the user
+  }
 }
 
 function unBanUser(user){
